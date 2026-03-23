@@ -9,7 +9,7 @@ export interface CardEntry {
 
 export class CardShowcase {
   private entries: CardEntry[] = []
-  private activeIndex = 0
+  private activeEntry: CardEntry | null = null
   private onSelect: (entry: CardEntry) => void
 
   constructor(container: HTMLElement, cards: CardDef[], onSelect: (entry: CardEntry) => void) {
@@ -52,16 +52,12 @@ export class CardShowcase {
   activate(entry: CardEntry): void {
     this.entries.forEach(e => e.element.classList.remove('active'))
     entry.element.classList.add('active')
-    this.activeIndex = this.entries.indexOf(entry)
+    this.activeEntry = entry
     this.onSelect(entry)
   }
 
-  getActive(): CardEntry {
-    return this.entries[this.activeIndex]
-  }
-
-  syncAngle(angle: number): void {
-    this.entries.forEach(e => e.instance.setAngle(angle))
+  getActive(): CardEntry | null {
+    return this.activeEntry
   }
 
   getEntries(): CardEntry[] {

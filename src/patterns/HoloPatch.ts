@@ -5,7 +5,7 @@ import { CARDDASS_COLORS } from '../utils/colorInterpolate'
 /**
  * パッチグリッドホログラムパターン。
  * 各パッチが独立して色をシフトするホログラムシールを模倣する。
- * canvasで描画しdata URLとして背景に設定する。
+ * canvas要素を直接子要素として配置し、toDataURL()によるPNGエンコードを回避する。
  */
 export class HoloPatch implements Pattern {
   private colors: string[]
@@ -13,41 +13,51 @@ export class HoloPatch implements Pattern {
   private patchGap: number
   private canvas: HTMLCanvasElement
   private ctx: CanvasRenderingContext2D
-  private lastDataUrl = ''
+  private cachedCols = 0
+  private cachedRows = 0
 
   constructor(opts: PatternOptions) {
     this.colors = opts.colors ?? CARDDASS_COLORS
     this.patchSize = opts.patchSize ?? 60
     this.patchGap = opts.patchGap ?? 4
     this.canvas = document.createElement('canvas')
+    this.canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;'
     this.ctx = this.canvas.getContext('2d')!
   }
 
   render(element: HTMLElement, angle: number): void {
-    const { patchSize, patchGap, colors } = this
+    const { patchSize, patchGap, colors, canvas } = this
     const total = patchSize + patchGap
     const cols = Math.ceil(element.clientWidth / total) + 1
     const rows = Math.ceil(element.clientHeight / total) + 1
 
-    this.canvas.width = cols * total
-    this.canvas.height = rows * total
+    if (!canvas.parentElement) {
+      element.appendChild(canvas)
+    }
+
+    // Only reallocate backing store when grid size changes
+    if (cols !== this.cachedCols || rows !== this.cachedRows) {
+      canvas.width = cols * total
+      canvas.height = rows * total
+      this.cachedCols = cols
+      this.cachedRows = rows
+    }
 
     const ctx = this.ctx
-    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height)
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
 
+    const n = colors.length
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
-        const phase = (r * cols + c) * 37 // 各パッチの位相オフセット
+        const phase = (r * cols + c) * 37
         const hueShift = ((angle * 3 + phase) % 360 + 360) % 360
-
         const x = c * total
         const y = r * total
 
         const grad = ctx.createConicGradient((hueShift * Math.PI) / 180, x + patchSize / 2, y + patchSize / 2)
-        const n = colors.length
-        colors.forEach((color, i) => {
-          grad.addColorStop(i / n, color)
-        })
+        for (let i = 0; i < n; i++) {
+          grad.addColorStop(i / n, colors[i])
+        }
         grad.addColorStop(1, colors[0])
 
         ctx.fillStyle = grad
@@ -56,17 +66,11 @@ export class HoloPatch implements Pattern {
         ctx.fill()
       }
     }
-
-    const dataUrl = this.canvas.toDataURL()
-    if (dataUrl !== this.lastDataUrl) {
-      this.lastDataUrl = dataUrl
-      element.style.backgroundImage = `url("${dataUrl}")`
-      element.style.backgroundSize = `${cols * total}px ${rows * total}px`
-      element.style.backgroundPosition = '0 0'
-    }
   }
 
   dispose(): void {
-    this.lastDataUrl = ''
+    this.canvas.remove()
+    this.cachedCols = 0
+    this.cachedRows = 0
   }
 }

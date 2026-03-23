@@ -6,7 +6,6 @@ import { SettingsPanel } from './app/SettingsPanel'
 
 const app = document.getElementById('app')!
 
-// Header
 app.innerHTML = `
   <header>
     <span class="logo">dassprism</span>
@@ -43,7 +42,7 @@ const showcase = new CardShowcase(showcaseEl, CARDS, (entry) => {
   panel.load(entry)
 })
 
-// モーション変更時に全カードへ反映
+// モーション重み変更時に全カードへ反映
 settingsEl.addEventListener('input', (e) => {
   const target = e.target as HTMLInputElement
   if (['alpha-weight', 'beta-weight', 'gamma-weight'].includes(target.id)) {
@@ -51,7 +50,6 @@ settingsEl.addEventListener('input', (e) => {
   }
 })
 
-// Copy ボタン
 copyBtn.addEventListener('click', () => {
   navigator.clipboard.writeText(snippetEl.textContent ?? '').then(() => {
     copyBtn.textContent = 'Copied!'
@@ -59,5 +57,4 @@ copyBtn.addEventListener('click', () => {
   })
 })
 
-// 全カードをマウント
 showcase.mountAll()

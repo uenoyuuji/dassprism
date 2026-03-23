@@ -12,7 +12,6 @@ export declare class DassPrism {
     private motion;
     private engine;
     private loop;
-    private angle;
     private dirty;
     private mounted;
     private frameCallback;

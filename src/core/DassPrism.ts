@@ -3,8 +3,6 @@ import type {
   PatternId,
   PatternOptions,
   MotionOptions,
-  AngleChangeHandler,
-  PermissionDeniedHandler,
 } from '../types'
 import { MotionController } from './MotionController'
 import { PatternEngine } from './PatternEngine'
@@ -15,13 +13,13 @@ const SHIMMER_CLASS = 'dassprism-shimmer'
 let sharedLoop: AnimationLoop | null = null
 let loopRefCount = 0
 
-function getSharedLoop(): AnimationLoop {
+function acquireLoop(): AnimationLoop {
   if (!sharedLoop) sharedLoop = new AnimationLoop()
   loopRefCount++
   return sharedLoop
 }
 
-function releaseSharedLoop(): void {
+function releaseLoop(): void {
   loopRefCount--
   if (loopRefCount === 0) {
     sharedLoop?.dispose()
@@ -34,14 +32,13 @@ export class DassPrism {
   private opts: Required<DassPrismOptions>
   private motion: MotionController
   private engine: PatternEngine
-  private loop: AnimationLoop
-  private angle = 0
+  private loop: AnimationLoop | null = null
   private dirty = false
   private mounted = false
 
   private frameCallback = () => {
     if (this.dirty) {
-      this.engine.render(this.element, this.angle)
+      this.engine.render(this.element, this.motion.getAngle())
       this.dirty = false
     }
   }
@@ -59,11 +56,10 @@ export class DassPrism {
     }
 
     this.engine = new PatternEngine(this.opts.pattern, this.opts.patternOptions)
-    this.loop = getSharedLoop()
 
     this.motion = new MotionController(
       this.opts.motion,
-      (angle) => { this.angle = angle; this.dirty = true; this.emit('angleChange', angle) },
+      (_angle) => { this.dirty = true; this.emit('angleChange', _angle) },
       () => { this.emit('permissionDenied') },
     )
   }
@@ -72,6 +68,7 @@ export class DassPrism {
     if (this.mounted) return
     this.mounted = true
 
+    this.loop = acquireLoop()
     this.element.style.position = 'relative'
     this.element.style.overflow = 'hidden'
 
@@ -88,8 +85,9 @@ export class DassPrism {
     this.mounted = false
 
     this.motion.stop()
-    this.loop.remove(this.frameCallback)
-    releaseSharedLoop()
+    this.loop!.remove(this.frameCallback)
+    releaseLoop()
+    this.loop = null
     this.engine.dispose()
     this.removeShimmer()
   }

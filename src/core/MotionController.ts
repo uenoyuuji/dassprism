@@ -17,6 +17,9 @@ export class MotionController {
 
   private orientationHandler: ((e: DeviceOrientationEvent) => void) | null = null
   private mouseMoveHandler: ((e: MouseEvent) => void) | null = null
+  private resizeHandler: (() => void) | null = null
+  private cx = 0
+  private cy = 0
 
   constructor(
     opts: MotionOptions,
@@ -45,6 +48,10 @@ export class MotionController {
     if (this.mouseMoveHandler) {
       window.removeEventListener('mousemove', this.mouseMoveHandler)
       this.mouseMoveHandler = null
+    }
+    if (this.resizeHandler) {
+      window.removeEventListener('resize', this.resizeHandler)
+      this.resizeHandler = null
     }
   }
 
@@ -91,12 +98,17 @@ export class MotionController {
   }
 
   private setupMouse(): void {
+    this.cx = window.innerWidth / 2
+    this.cy = window.innerHeight / 2
+
+    this.resizeHandler = () => {
+      this.cx = window.innerWidth / 2
+      this.cy = window.innerHeight / 2
+    }
+    window.addEventListener('resize', this.resizeHandler)
+
     this.mouseMoveHandler = (e: MouseEvent) => {
-      const cx = window.innerWidth / 2
-      const cy = window.innerHeight / 2
-      const dx = e.clientX - cx
-      const dy = e.clientY - cy
-      this.angle = (dx + dy) * this.opts.mouseSensitivity
+      this.angle = (e.clientX - this.cx + e.clientY - this.cy) * this.opts.mouseSensitivity
       this.onAngleChange(this.angle)
     }
     window.addEventListener('mousemove', this.mouseMoveHandler)

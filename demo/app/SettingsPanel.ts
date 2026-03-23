@@ -1,6 +1,5 @@
 import type { CardEntry } from './CardShowcase'
-import type { PatternId, PatternOptions } from 'dassprism'
-import { CARDDASS_COLORS } from '../../src/utils/colorInterpolate'
+import type { PatternId, PatternOptions, MotionOptions } from 'dassprism'
 
 interface Controls {
   patternSelect: HTMLSelectElement
@@ -164,7 +163,6 @@ export class SettingsPanel {
     rangeHandler(c.gammaInput, c.gammaValue, 1)
 
     c.shimmerToggle.addEventListener('change', () => {
-      // shimmer変更はmount/unmountが必要なため、角度で再描画するだけに留める
       this.emitSnippet()
     })
   }
@@ -214,41 +212,33 @@ export class SettingsPanel {
     this.active.instance.setPattern(pid, this.currentPatternOptions(pid))
   }
 
+  private readMotionOpts(): Partial<MotionOptions> {
+    const c = this.controls
+    return {
+      alphaWeight: parseFloat(c.alphaInput.value),
+      betaWeight: parseFloat(c.betaInput.value),
+      gammaWeight: parseFloat(c.gammaInput.value),
+    }
+  }
+
   private emitSnippet(): void {
     if (!this.active) return
     const c = this.controls
     const pid = c.patternSelect.value as PatternId
-    const opts = this.currentPatternOptions(pid)
-    const motionOpts = {
-      alphaWeight: parseFloat(c.alphaInput.value),
-      betaWeight: parseFloat(c.betaInput.value),
-      gammaWeight: parseFloat(c.gammaInput.value),
-    }
-    const shimmer = c.shimmerToggle.checked
-    const shimmerSpeed = parseInt(c.shimmerSpeedInput.value)
 
     const optsStr = JSON.stringify({
       pattern: pid,
-      patternOptions: opts,
-      motion: motionOpts,
-      shimmer,
-      shimmerSpeed,
+      patternOptions: this.currentPatternOptions(pid),
+      motion: this.readMotionOpts(),
+      shimmer: c.shimmerToggle.checked,
+      shimmerSpeed: parseInt(c.shimmerSpeedInput.value),
     }, null, 2)
 
-    const snippet = `createHologram('#my-card', ${optsStr})`
-    this.onSnippetChange(snippet)
+    this.onSnippetChange(`createHologram('#my-card', ${optsStr})`)
   }
 
-  updateMotionForAll(entries: { instance: { setMotion: (o: object) => void } }[]): void {
-    const c = this.controls
-    const motionOpts = {
-      alphaWeight: parseFloat(c.alphaInput.value),
-      betaWeight: parseFloat(c.betaInput.value),
-      gammaWeight: parseFloat(c.gammaInput.value),
-    }
+  updateMotionForAll(entries: { instance: { setMotion: (o: Partial<MotionOptions>) => void } }[]): void {
+    const motionOpts = this.readMotionOpts()
     entries.forEach(e => e.instance.setMotion(motionOpts))
   }
 }
-
-// suppress unused import warning
-void CARDDASS_COLORS
